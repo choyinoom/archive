@@ -1,0 +1,96 @@
+pipeline {
+    agent {
+        label 'master'
+    }
+
+    tools {
+        maven "maven_3_8_1"
+    }
+    
+    stages {
+        stage('Build') {
+            steps {
+                sh 'rm -rf springboot-app && mkdir springboot-app'
+                dir('springboot-app') {
+                    git branch: 'test_deploy', credentialsId: 'git_ssh', url: 'git@localhost:projects/springboot-app.git'
+                    withEnv(['JAVA_HOME=/home/jenkins/jdk17.0.6']) {
+                        sh "mvn clean package -DskipTests -P dev"
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    def serverInfo = readYaml file: './springboot-app/src/main/resources/deployment.yml'
+					def successfulDeployments = []
+
+                    serverInfo.dev.each { server ->
+                        def REMOTE_HOST = server.host
+                        def REMOTE_USER = server.user
+                        def REMOTE_DIR = server.remote_dir
+                        def BACKUP_DIR = server.backup_dir
+                        def JAVA_HOME = server.java_home
+                        def SERVICE_NAME = server.service_name
+                        def CATALINA_BASE = server.catalina_base
+                        def WEBAPPS = server.webapps
+
+                        // Set environment variables dynamically
+                        env.REMOTE_HOST = REMOTE_HOST
+                        env.REMOTE_USER = REMOTE_USER
+                        env.REMOTE_DIR = REMOTE_DIR
+                        env.BACKUP_DIR = BACKUP_DIR
+                        env.JAVA_HOME = JAVA_HOME
+                        env.SERVICE_NAME = SERVICE_NAME
+                        env.CATALINA_BASE = CATALINA_BASE
+                        env.WEBAPPS = WEBAPPS
+
+						stage("${SERVICE_NAME}: Backup") {
+							sh 'chmod +x ./backup.sh && ./backup.sh'
+						}
+
+                        try {
+                            stage("${SERVICE_NAME}: Deploy") {
+								sh "ssh -i ~/.ssh/jenkins_rsa ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${DEPLOY_DIR} && echo \"Directory created!\"'"
+                                sh 'scp -i ~/.ssh/jenkins_rsa ./springboot-app/target/ROOT.war ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/'
+                                sh 'chmod +x ./deploy.sh && ./deploy.sh'
+                            }
+                            stage("${SERVICE_NAME}: Health Check") {
+                                sh 'chmod +x ./health_check.sh && ./health_check.sh'
+                            }
+
+							// If deployment succeeds, add the server to the successfulDeployments list
+                            successfulDeployments.add(server)
+                        } catch (exc) {
+                            echo "Deployment failed for ${SERVICE_NAME}. Rolling back previous successful deployments."
+
+                            // 1. Rollback current deployment
+                            stage("${SERVICE_NAME}: Rollback") {
+                                sh 'chmod +x ./rollback.sh && ./rollback.sh'
+                            }
+                            
+                            // 2. Rollback all successful deployments
+                            for (successfulServer in successfulDeployments) {
+                                env.REMOTE_HOST = successfulServer.host
+                                env.REMOTE_USER = successfulServer.user
+                                env.DEPLOY_DIR = successfulServer.deploy_dir
+                                env.BACKUP_DIR = successfulServer.backup_dir
+                                env.JAVA_HOME = successfulServer.java_home
+                                env.SERVICE_NAME = successfulServer.service_name
+                                env.CATALINA_BASE = successfulServer.catalina_base
+                                env.WEBAPPS = successfulServer.webapps
+                                
+                                def serviceName = successfulServer.service_name
+                                stage("${serviceName}: Rollback") {
+                                    sh 'chmod +x ./rollback.sh && ./rollback.sh'
+                                }
+                            }
+                            
+                            error(message: "Rollback proceeded from ${SERVICE_NAME}")
+                        }
+                    }
+                }
+            }            
+        }       
+    }
+}

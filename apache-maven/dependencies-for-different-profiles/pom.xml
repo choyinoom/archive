@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.6.1</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.example</groupId>
+	<artifactId>hello</artifactId>
+	<packaging>war</packaging>
+	<name>dependencies-for-different-profiles</name>
+	<properties>
+		<java.version>1.8</java.version>
+	</properties>
+
+	<profiles>
+		<profile>
+			<id>dev</id>
+			<properties>
+				<env>DEV</env>
+			</properties>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>com.your.dependency</groupId>
+					<artifactId>lib-connector-DEV</artifactId>
+					<version>1.32</version>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>prod</id>
+			<properties>
+				<env>PROD</env>
+			</properties>
+			<dependencies>
+				<dependency>
+					<groupId>com.your.dependency</groupId>
+					<artifactId>lib-connector-PROD</artifactId>
+					<version>1.32</version>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
+	
+	<dependencies>
+		<dependency>
+			<groupId>com.your.dependency</groupId>
+			<artifactId>lib-connector-${env}</artifactId>
+			<version>1.32</version>
+		</dependency>
+		...
+	</dependencies>
+
+	<build>
+		<finalName>ROOT</finalName>
+		<plugins>
+			<!-- execute mvn validate to install dependency in your local repository -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>install-mylib</id>
+						<phase>validate</phase>
+						<configuration>
+							<file>${project.basedir}/src/lib/com.your.dependency.lib-connector-${env}-1.32.jar</file>
+							<groupId>com.your.dependency</groupId>
+							<artifactId>lib-connector-${env}</artifactId>
+							<version>1.32</version>
+							<packaging>jar</packaging>
+						</configuration>
+						<goals>
+							<goal>install-file</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

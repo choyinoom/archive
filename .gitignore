@@ -1,0 +1,12 @@
+### Eclipse ###
+.metadata
+.settings
+Servers/
+build/
+.classpath
+.project
+
+### Maven ###
+target/
+
+

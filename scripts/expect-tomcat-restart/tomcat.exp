@@ -1,0 +1,133 @@
+#!/usr/bin/env expect
+
+#set variable from input args
+set host [lindex $argv 0]
+set user [lindex $argv 1]
+set pass [lindex $argv 2]
+set cmd  [lindex $argv 3]
+set port [lindex $argv 4]
+set shl  [lindex $argv 5]
+
+#base directory
+set base [file dirname $shl]
+
+
+set prompt "(%|#|\\\$) $"
+
+proc portChk { cmd } {
+	global port
+	puts ""
+	puts ""
+	puts "=============== PORT CHECK START... =============="
+
+	set result -1
+	set timeout 1
+	for { set a 1 } {$a < 120} {incr a} {
+		send "ss -nlp | grep ':$port' | wc -l\r"
+		switch -regexp -- $cmd {
+		.*start {
+			expect {
+				"0\r\n" { puts ">>> port check failed ...\n" }
+				"1\r\n" { puts "**success**"; set result 0; break; }
+			}
+		}	{stop|kill} {
+			expect {
+				"1\r\n" { puts ">>> port check failed ...\n" }
+				"0\r\n" { puts "**success**"; set result 0; break; }
+			}
+		}
+		}
+		after 1000
+	}
+
+	puts "================ PORT CHECK END... ================"
+	puts ""
+	return result
+}
+
+
+
+puts ""
+puts "==================== READY... ========================="
+puts "base dir: $base"
+puts "shl path: $shl"
+puts "======================================================="
+puts ""
+
+spawn ssh $user@$host
+expect -timeout 1 "*(yes/no)?" {
+	send "yes\r"
+}
+expect -timeout 3 "*?password" {
+	send "$pass\r"
+}
+
+expect -re $prompt { send "cd $base\r" }
+
+expect {
+	"No such*\r" { puts "ERROR: wrong shl path given"; exit 1 }
+	-re $prompt {
+		expect *
+		switch -- $cmd {
+			start {
+				# check if a process is running
+				send "ss -nlp | grep ':$port' | wc -l\r"  
+				expect {
+					"1\r\n" { puts "your process is still alive"; exit 1 }
+					"0\r\n" 
+				}
+				send "if stat $shl &> /dev/null; then echo 'shell found'; else echo 'shell not found'; fi\r"
+				expect {
+					"\r\nshell not found\r\n" { exit 1 }
+					"\r\nshell found\r\n" {
+						expect -re $prompt {
+							send "sh $shl\r"
+							set timeout 10
+						}
+						expect "*Tomcat started.\r\n" {}
+					}
+				}
+			} stop {
+                send "ss -nlp | grep ':$port' | wc -l\r"
+                expect {
+                    "0\r\n" { puts "no process to stop"; exit 1 }
+                    "1\r\n"
+                }
+				send "if stat $shl &> /dev/null; then echo 'shell found'; else echo 'shell not found'; fi\r"
+				expect {
+					"\r\nshell not found\r\n" { exit 1 }
+					"\r\nshell found\r\n" {
+						expect -re $prompt {
+							send "sh $shl\r"
+							set timeout 10
+						}
+					}
+				}
+			} kill {
+				#8080, 18080와  같이 포트가 2개 잡힐 수 있기 때문에 맨 앞에 콜론 추가
+				send "ss -nlp | grep ':$port' | wc -l\r"  
+				expect {
+					"0\r\n" { puts "no such process"; exit 1}
+					"1\r\n" { expect -re $prompt {send "kill -9 `exec ss -nlp | grep \":$port\" | grep -o \"pid=\[0-9\]*\" | cut -f2- -d=`\r"}}
+					default { puts "neither"; exit 1 }
+				}
+			} default {
+				puts "command is invalid."
+				exit 1
+			}
+		}
+	}
+}
+
+expect {
+	timeout { puts "timed out"; exit 1 }
+	"sh:*"  { puts "shell script doesn't exist."; exit 1 }
+	-re $prompt
+}
+
+set result [portChk $cmd]
+if { $result ==  -1 } {
+	# port chk failed
+	exit 1
+}
+close

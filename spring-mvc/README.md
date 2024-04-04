@@ -42,7 +42,7 @@ Spring Web MVC Framework를 사용하면 다양한 형태의 요청과 응답을
 
 ### **특정 서블릿에서만 유효한 빈(bean) 정의**
 
-Web MVC framework에서 각 `DispatcherServlet`는 자신만의 `WebApplicationContext`를 가지게 되는데,이 때 root `WebApplicationContext`에 정의된 빈들을 상속받는다. 이렇게 상속받은 빈이라도 특정 서블릿 인스턴스 안에서만 유효하도록 override할 수 있으며, Spring MVC는 이 설정을 WEB-INF 아래에 있는 `[servlet-name]=servlet.xml` 파일로부터 가져오도록 설계되어있다.
+Web MVC framework에서 각 `DispatcherServlet`는 자신만의 `WebApplicationContext`를 가지게 되는데,이 때 root `WebApplicationContext`에 정의된 빈들을 상속받는다. 이렇게 상속받은 빈이라도 특정 서블릿 인스턴스 안에서만 유효하도록 override할 수 있으며, Spring MVC는 이 설정을 WEB-INF 아래에 있는 `[servlet-name]-servlet.xml` 파일로부터 가져오도록 설계되어있다.
 
 ```xml
 <!-- 어플리케이션 전체에서 유효한 Context Configuration  (e.g., applicationContext.xml) -->

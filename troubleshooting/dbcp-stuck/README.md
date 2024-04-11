@@ -74,8 +74,15 @@ By carefully considering these factors and following recommended practices, you 
 
 <br>
 
----
+* You can verify directly by checking the tomcat catalina logs
 
+	```properties
+	#logging.properties
+	org.apache.catalina.core.NamingContextListener.level = ALL
+	```
+
+
+---
 #### References
 
 * [Commons DBCP 이해하기](https://d2.naver.com/helloworld/5102792)

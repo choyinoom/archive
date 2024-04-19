@@ -17,7 +17,7 @@ ssh -i ~/.ssh/jenkins_rsa ${REMOTE_USER}@${REMOTE_HOST} <<EOF
             perform_health_check
 
             if [ \$response_code -eq 200 ]; then
-                echo "Health check successful."
+                echo "Health check succeeded."
                 break
             else
                 ((retries++))

@@ -1,0 +1,66 @@
+auth_enabled: false
+
+analytics:
+  reporting_enabled: false
+
+memberlist:
+  join_members:
+    - 10.1.39.192:7946 #backend
+    - 10.1.39.192:7956 #read
+    - 10.1.39.192:7966 #write
+    - 10.1.39.192:7976 #write-02
+  dead_node_reclaim_time: 30s
+  gossip_to_dead_nodes_time: 15s
+  left_ingesters_timeout: 30s
+  bind_addr: ['10.1.39.192']
+  gossip_interval: 2s
+
+common:
+  path_prefix: /home/user/data/loki
+  replication_factor: 1
+  compactor_address: http://127.0.0.1:3100
+  storage:
+    s3:
+      endpoint: 127.0.0.1:8300 #minio
+      insecure: true
+      bucketnames:  loki-data
+      access_key_id: minioadmin
+      secret_access_key: sjw9#dfkC02j
+      s3forcepathstyle: true
+  ring:
+    kvstore:
+      store: memberlist
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    # New TSDB schema
+    - from: 2024-05-14
+      store: tsdb
+      object_store: s3
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /home/user/data/loki/tsdb-index
+    cache_location: /home/user/data/loki/tsdb-cache
+
+ruler:
+  #alertmanager_url: http://localhost:8093 #prometheus
+  storage:
+    s3:
+      bucketnames: loki-ruler
+
+compactor:
+  working_directory: /home/user/data/loki/compactor
+  retention_enabled: true
+  delete_request_store: s3

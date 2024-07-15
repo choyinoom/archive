@@ -1,0 +1,11 @@
+nohup ../loki-linux-amd64 \
+-config.expand-env=true \
+-config.file=../loki-config.yaml \
+-server.http-listen-port=3130 \
+-server.grpc-listen-port=9195 \
+-memberlist.nodename=write-02 \
+-memberlist.advertise-addr=10.1.39.192 \
+-memberlist.advertise-port=7976 \
+-memberlist.bind-port=7976 \
+-ingester.lifecycler.ID =HADDOP-STOR1-write02 \
+-target=write &
